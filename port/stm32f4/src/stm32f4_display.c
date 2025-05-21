@@ -42,6 +42,10 @@ typedef struct
 
 /* Global variables */
 
+/**
+ * @brief Structure to define the HW dependencies of an RGB LED.
+ * 
+ */
 static stm32f4_display_hw_t display_arr[] = {
     [PORT_REAR_PARKING_DISPLAY_ID] = {
         .p_port_red = STM32F4_REAR_PARKING_DISPLAY_RGB_R_GPIO,
@@ -53,11 +57,12 @@ static stm32f4_display_hw_t display_arr[] = {
     },
 };
 
-static rgb_color_t current_color[1];  // Color actual
-static bool led_on[1];                // Estado ON/OFF
+static rgb_color_t current_color[1];  /*!< Color actual */
+static bool led_on[1];                /*!< Estado ON/OFF */
 
 
 /* Private functions -----------------------------------------------------------*/
+
 /**
  * @brief Get the display struct with the given ID.
  * 
@@ -81,6 +86,12 @@ stm32f4_display_hw_t *_stm32f4_display_get(uint32_t display_id)
 
 /* Public functions -----------------------------------------------------------*/
 
+/**
+ * @brief Configure the timer that controls the PWM of each one of the RGB LEDs of the display system.
+ * This function is called by the port_display_init() public function to configure the timer that controls the PWM of the RGB LEDs of the display.
+ * 
+ * @param display_id 
+ */
 void _timer_pwm_config(uint32_t display_id)
 {
     // Paso 1: Activar el reloj del timer
@@ -224,6 +235,7 @@ void port_display_set_rgb(uint32_t display_id, rgb_color_t color)
         led_on[display_id] = true; // Set the LED status to ON
     }
 }
+
 
 void port_display_toggle_rgb(uint32_t display_id)
 {

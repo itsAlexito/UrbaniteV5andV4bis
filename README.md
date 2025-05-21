@@ -109,7 +109,7 @@ Se utiliza una FSM para gestionar la visualización de colores de forma escalona
 
 ### Diagrama de señales PWM
 
-![Ejemplo de señales PWM para color amarillento](docs/assets/imgs/pwm_signals_example.png)
+![Ejemplo de señales PWM para color amarillo](docs/assets/imgs/pwm_signals_example.png)
 
 > Ejemplo de cómo varían las señales PWM para generar colores compuestos en el LED RGB.
 
@@ -150,14 +150,116 @@ Se desarrolla una FSM principal que coordina todos los subsistemas anteriores.
 
 > Diagrama de la FSM que integra los modos ON, OFF, PAUSE y modos de bajo consumo.
 
-### Montaje final del sistema
+### Montaje final
 
-![Montaje final del sistema Urbanite](docs/assets/imgs/final_system_setup.png)
+![Montaje final del sistema](docs/assets/imgs/final_system_setup.jpeg)
 
-> Fotografía del montaje final mostrando todos los elementos del sistema funcionando conjuntamente.
+> Imagen para mostrar el montaje real del sistema
+
+
+### Captura osciloscopio
+![Calculo distancia](docs/assets/imgs/osciloscopio.png)
+> En esta imagen podemos observar el cálculo real de la distancia obtenida sobre uno de los osciloscopios del laboratorio
 
 ---
 
+## Version 5.1 - Parpadeo del LED RGB
+
+### Descripción general
+
+En esta versión se añade una mejora visual al sistema Urbanite: el LED RGB no solo cambia de color en función de la distancia al obstáculo, sino que **también parpadea a diferentes frecuencias dependiendo de dicha distancia**. Esta funcionalidad adicional permite ofrecer una respuesta visual más intuitiva y accesible al usuario, incrementando la percepción del riesgo cuanto más cerca se encuentre el obstáculo.
+
+Se mantiene la arquitectura modular basada en FSM, incorporando la lógica de parpadeo en la máquina de estados del display (`fsm_display`). El periodo de parpadeo se calcula automáticamente cada vez que se actualiza la distancia, y el parpadeo se ejecuta de forma periódica mediante temporización basada en `SysTick`.
+
+### Funcionalidad implementada
+
+- Incorporación de lógica de parpadeo en la FSM del display.
+- Selección automática del periodo de parpadeo según el rango de distancia:
+  - Distancia muy próxima → parpadeo rápido.
+  - Distancia media → parpadeo moderado.
+  - Distancias seguras → sin parpadeo.
+- Alternancia automática del estado ON/OFF del LED mediante función `port_display_toggle_rgb()`.
+- Ampliación de la estructura interna del display con campos de temporización (`toggle_period_ms`, `next_toggle_time`).
+- Transición adicional en la FSM que gestiona el parpadeo mientras el sistema está activo.
+- Comprobación del tiempo de toggle en cada ciclo de la FSM.
+
+### Estructura modular
+
+- **PORT**:
+  - Se implementa la nueva función `port_display_toggle_rgb()`, que permite alternar el estado del LED RGB entre encendido (último color aplicado) y apagado. Esto permite simular el parpadeo sin necesidad de volver a calcular el color desde cero.
+  - Para ello, se añaden dos nuevas variables globales:
+    - `current_color[]`, que guarda el último color asignado a cada display.
+    - `led_on[]`, que mantiene el estado actual (ON/OFF) del LED.
+  - Además, se modifica la función `port_display_set_rgb()` para actualizar estas variables cada vez que se aplica un nuevo color. Todo esto se hace sin afectar al funcionamiento previo del sistema.
+
+- **COMMON**:
+  - Se amplía la estructura interna de la FSM del display (`fsm_display_t`) con dos nuevos campos:
+    - `toggle_period_ms`: guarda el intervalo de parpadeo en milisegundos.
+    - `next_toggle_time`: almacena el tiempo absoluto en el que debe producirse el siguiente cambio de estado del LED.
+  - En la función `fsm_display_set_distance()`, que ya se ejecuta cada vez que se recibe una nueva medida del sensor ultrasónico, se añade lógica para asignar automáticamente un periodo de parpadeo según el rango de distancia.
+  - Se incorpora una nueva condición `check_blink()` y una acción `do_blink_toggle()` a la tabla de transiciones de la FSM. Esta transición verifica si ha transcurrido el tiempo de espera para el siguiente toggle y, si es así, llama a la función `port_display_toggle_rgb()`.
+  - De este modo, mientras el sistema está activo (`SET_DISPLAY`), la FSM del display evalúa de forma periódica si debe alternar el estado del LED, generando así el efecto de parpadeo con la frecuencia deseada.
+
+### Máquina de estaods actualizada
+
+![Máquina de estados actualizada](docs/assets/imgs/new_fsm.png)
+
+> Ejemplo ilustrativo de la relación entre la distancia medida y la frecuencia de parpadeo del LED RGB.
+
+### Valores de ejemplo para parpadeo
+
+| Rango de distancia (cm) | Color del LED              | Frecuencia de parpadeo  |
+|-------------------------|----------------------------|--------------------------|
+| 0 – 25                  | Rojo                       | 10 Hz (100 ms toggle)    |
+| 26 – 50                 | Amarillo                   | 3.3 Hz (300 ms toggle)   |
+| > 50                    | Verde / Turquesa / Azul    | Sin parpadeo             |
+
+## Version 5.2 - Activación sonora mediante buzzer pasivo
+
+
+### Descripción general
+
+Durante las pruebas del sistema Urbanite, se ha descubierto una mejora funcional adicional que permite añadir una **alerta sonora pasiva**. La mejora consiste en conectar un **buzzer pasivo** al mismo pin que controla el **canal rojo del LED RGB**.
+
+De este modo, el buzzer aprovecha la señal PWM generada por el temporizador asociado al canal rojo. Cuanto más alto es el valor del canal rojo (es decir, cuanto más “rojo” es el color mostrado por el LED), mayor es la intensidad de la señal enviada al buzzer, y por tanto **más fuerte será el sonido emitido**.
+
+Esto proporciona al usuario una señal sonora proporcional a la peligrosidad del entorno:
+- **Cuando el LED está completamente rojo (distancia crítica)**, el buzzer emite un tono más agudo
+- **Cuando el LED es amarillo (advertencia)**, el buzzer suena más débil.
+- **Cuando el LED es verde o azul**, el buzzer no suena (al no haber componente roja).
+
+- **Cuando el LED es turquesa**, debido al color escogido, el turquesa tiene una componenete muy pequeña de rojo, lo cual hace sonar levemente el buzzer siendo así capaces de distinguir más facilmente entre azul y turquesa. Una posible solución sería cambiar el patrón de colores para evitar el turquesa o cualquier color con componente roja para mejorar la implementacion de este buzzer.
+
+
+### Funcionamiento
+
+Esta mejora aprovecha el hecho de que:
+- El LED RGB es controlado por PWM.
+- El canal rojo utiliza una señal que puede ser compartida con otros periféricos.
+- El buzzer pasivo responde directamente a la señal de modulación del pin.
+
+### Beneficios
+
+- Añade una señal sonora.
+- Incrementa la accesibilidad del sistema para personas con dificultades visuales.
+- Proporciona una segunda capa de información sensorial (sonido + luz).
+- No interfiere con el funcionamiento visual del LED RGB.
+
+
+
+> El buzzer se conecta en paralelo con el canal rojo del LED RGB. Cuanto mayor sea el componente rojo del color, más fuerte será el sonido.
+
+
+
+
+### Video demostración sistema completo (pinchar en la imagen)
+
+
+[![Watch the video](docs/assets/imgs/video.png)](https://youtube.com/shorts/B1nqxkF7TYI?si=hDokXdg8_TdykHlO)
+
+
+> Video del sistema completo con las nuevas funcionalidades
+---
 ## Recursos adicionales
 
 - [Documentación generada con Doxygen](docs/html/index.html)

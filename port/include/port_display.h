@@ -25,8 +25,8 @@ typedef struct {
 } rgb_color_t;
 
 /* Defines and enums ----------------------------------------------------------*/
-#define PORT_REAR_PARKING_DISPLAY_ID 0
-#define PORT_DISPLAY_RGB_MAX_VALUE 255
+#define PORT_REAR_PARKING_DISPLAY_ID 0						/*!< Display system identifier for the rear parking sensor */
+#define PORT_DISPLAY_RGB_MAX_VALUE 255						/*!< Maximum value for the RGB LED */
 #define COLOR_RED       (rgb_color_t){255, 0, 0}           /*!< Rojo (danger)        */
 #define COLOR_YELLOW    (rgb_color_t){94, 94, 0}           /*!< Amarillo (warning)   */
 #define COLOR_GREEN     (rgb_color_t){0, 255, 0}           /*!< Verde (no problem)   */

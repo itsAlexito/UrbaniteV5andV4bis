@@ -24,6 +24,11 @@ typedef struct fsm_ultrasound_t fsm_ultrasound_t; /*!< Variable */
 
 /* Enums */
 
+/**
+ * @brief Enumerator for the ultrasound finite state machine.
+ * This enumerator defines the different states that the ultrasound finite state machine can be in. Each state represents a specific condition or step in the ultrasound distance measurement process.
+ *
+ */
 enum FSM_ULTRASOUND
 {
     WAIT_START = 0, 
@@ -84,7 +89,6 @@ void fsm_ultrasound_fire(fsm_ultrasound_t *p_fsm);
  * This function returns the status of the ultrasound. This function might be used for testing and debugging purposes.
  * 
  * @param p_fsm 
- * @param status 
  * @return true if the ultrasound is active
  * @return false if not
  */
