@@ -15,6 +15,11 @@
 
 
 /* Struct */
+
+/**
+ * @brief Structure to define the Urbanite FSM.
+ * 
+ */
 struct fsm_urbanite_t
 {
     fsm_t f; /*!< Urbanite FSM */

@@ -14,7 +14,10 @@
 
 /* Typedefs --------------------------------------------------------------------*/
 
-/* Typedefs --------------------------------------------------------------------*/
+/**
+ * @brief Structure to define an RGB color.
+ * 
+ */
 typedef struct {
 	uint8_t r; /*!<Red color value */
 	uint8_t g; /*!<Green color value */
@@ -22,7 +25,6 @@ typedef struct {
 } rgb_color_t;
 
 /* Defines and enums ----------------------------------------------------------*/
-/* Defines */
 #define PORT_REAR_PARKING_DISPLAY_ID 0
 #define PORT_DISPLAY_RGB_MAX_VALUE 255
 #define COLOR_RED       (rgb_color_t){255, 0, 0}           /*!< Rojo (danger)        */
@@ -54,6 +56,11 @@ void port_display_init(uint32_t display_id);
  */
 void port_display_set_rgb(uint32_t display_id ,rgb_color_t color);
 
-
+/**
+ * @brief Toggle the RGB LED between OFF and the last set color.
+ * 
+ * @param display_id 
+ */
+void port_display_toggle_rgb(uint32_t display_id);
 
 #endif /* PORT_DISPLAY_SYSTEM_H_ */

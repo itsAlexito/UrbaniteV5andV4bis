@@ -1,8 +1,8 @@
 /**
  * @file fsm_ultrasound.h
  * @brief Header for fsm_ultrasound.c file.
- * @author alumno1
- * @author alumno2
+ * @author Alvaro San Emeterio
+ * @author Alejandro Barrio
  * @date fecha
  */
 

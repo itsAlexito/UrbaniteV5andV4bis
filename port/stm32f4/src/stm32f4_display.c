@@ -26,6 +26,10 @@
 
 /* Typedefs --------------------------------------------------------------------*/
 
+/**
+ * @brief Structure to define the HW dependencies of an RGB LED.
+ * 
+ */
 typedef struct
 {
     GPIO_TypeDef *p_port_red; /*!< GPIO where the RED LED is connected */
@@ -48,6 +52,10 @@ static stm32f4_display_hw_t display_arr[] = {
         .pin_blue = STM32F4_REAR_PARKING_DISPLAY_RGB_B_PIN
     },
 };
+
+static rgb_color_t current_color[1];  // Color actual
+static bool led_on[1];                // Estado ON/OFF
+
 
 /* Private functions -----------------------------------------------------------*/
 /**
@@ -210,8 +218,20 @@ void port_display_set_rgb(uint32_t display_id, rgb_color_t color)
         // Forzar actualización y reactivar el temporizador
         TIM4->EGR |= TIM_EGR_UG;
         TIM4->CR1 |= TIM_CR1_CEN;
+
+        // Guardar el color actual
+        current_color[display_id] = color;
+        led_on[display_id] = true; // Set the LED status to ON
     }
 }
 
-
-
+void port_display_toggle_rgb(uint32_t display_id)
+{
+    if (!led_on[display_id]) {
+        port_display_set_rgb(display_id, current_color[display_id]);
+        led_on[display_id] = true;
+    } else {
+        port_display_set_rgb(display_id, COLOR_OFF);
+        led_on[display_id] = false;
+    }
+}

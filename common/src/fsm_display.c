@@ -21,6 +21,11 @@
 #include "fsm_display.h"
 #include "fsm.h"
 /* Typedefs --------------------------------------------------------------------*/
+
+/**
+ * @brief Structure of the Display FSM.
+ * 
+ */
 struct fsm_display_t
 {
     fsm_t f; /*!< Display FSM */
@@ -29,6 +34,8 @@ struct fsm_display_t
     bool status; /*!< Status of the display */
     bool idle ; /*!< Flag indicating if the display is idle */
     uint32_t display_id; /*!< ID of the display, must be unique */
+    uint32_t toggle_period_ms; /*!< Time in ms to toggle the display */
+    uint32_t next_toggle_time; /*!< Time in ms to toggle the display */
 };
 
 /* Private functions -----------------------------------------------------------*/
@@ -110,6 +117,33 @@ static bool check_off(fsm_t *p_this)
     return !p_fsm_display->status;
 }
 
+
+/**
+ * @brief check if a blink toggle should occur
+ * 
+ * @param p_this 
+ * @return true 
+ * @return false 
+ */
+static bool check_blink(fsm_t *p_this)
+{
+    fsm_display_t *p = (fsm_display_t *)p_this;
+    return (p->toggle_period_ms > 0 && port_system_get_millis() >= p->next_toggle_time);
+}
+
+/**
+ * @brief toggle the RGB LED between ON and OFF
+ * 
+ * @param p_this 
+ */
+static void do_blink_toggle(fsm_t *p_this)
+{
+    fsm_display_t *p = (fsm_display_t *)p_this;
+    port_display_toggle_rgb(p->display_id);
+    p->next_toggle_time = port_system_get_millis() + p->toggle_period_ms;
+}
+
+
 /* State machine output or action functions */
 
 /**
@@ -157,15 +191,29 @@ static void do_set_off(fsm_t *p_this)
     p_fsm_display->idle = false;
 }
 
+/**
+ * @brief Array representing the transitions table of the FSM display.
+ * 
+ */
 static fsm_trans_t fsm_trans_display[] = {
     {WAIT_DISPLAY, check_active, SET_DISPLAY, do_set_on},
     {SET_DISPLAY, check_set_new_color,SET_DISPLAY, do_set_color},
+    {SET_DISPLAY, check_blink, SET_DISPLAY, do_blink_toggle},
     {SET_DISPLAY, check_off, WAIT_DISPLAY, do_set_off},
     {-1, NULL, -1, NULL} // End of the FSM
 };
 
+
 /* Other auxiliary functions */
 
+/**
+ * @brief Initialize a display system FSM.
+ * This function initializes the default values of the FSM struct and calls to the port to initialize the associated HW given the ID.
+ * The FSM stores the display level of the display system. The user should set it using the function fsm_display_set_distance().
+ * 
+ * @param p_fsm_display 
+ * @param display_id 
+ */
 static void fsm_display_init(fsm_display_t *p_fsm_display, uint32_t display_id)
 {
     //1. Call the fsm_init() to initialize the FSM. Pass the address of the fsm_t struct and the transition table.
@@ -180,6 +228,9 @@ static void fsm_display_init(fsm_display_t *p_fsm_display, uint32_t display_id)
     p_fsm_display->idle = false;
     //5. Call function port_display_init()` to initialize the HW.
     port_display_init(display_id);
+    //6. Initialize blinking fields
+    p_fsm_display->toggle_period_ms = 0;
+    p_fsm_display->next_toggle_time = 0;
 }
 
 /* Public functions -----------------------------------------------------------*/
@@ -235,7 +286,18 @@ void fsm_display_set_distance(fsm_display_t *p_fsm, uint32_t distance_cm)
     p_fsm->distance_cm = distance_cm;
     //2. Set the field new_color to true to indicate that a new color has to be set.
     p_fsm->new_color = true;
+
+    //3. Set blink frequency based on distance
+    if (distance_cm <= WARNING_MIN_CM)
+        p_fsm->toggle_period_ms = 100;
+    else if (distance_cm <= NO_PROBLEM_MIN_CM)
+        p_fsm->toggle_period_ms = 300;
+    else
+        p_fsm->toggle_period_ms = 0;
+
+    p_fsm->next_toggle_time = port_system_get_millis() + p_fsm->toggle_period_ms;
 }
+
 
 bool fsm_display_get_status(fsm_display_t *p_fsm)
 {
