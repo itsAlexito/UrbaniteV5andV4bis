@@ -350,7 +350,7 @@ Esta mejora aprovecha el hecho de que:
 ---
 ## Recursos adicionales
 
-- [Documentación generada con Doxygen](docs/html/index.html)
+- [Documentación generada con Doxygen](https://www.doxygen.nl/)
 - [Repositorio oficial Urbanite - UPM](https://github.com/sdg2DieUpm/urbanite)
 - [Tutoriales y vídeos SDG2](https://www.youtube.com/channel/UCYIw_gl745WMJ1n0MamDzQw)
 
