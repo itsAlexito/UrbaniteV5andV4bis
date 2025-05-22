@@ -161,19 +161,23 @@ static void do_stop_urbanite(fsm_t *p_this)
     //✅ 1. Reset the duration of the button by calling fsm_button_reset_duration() to avoid the system to turn ON again.
     fsm_urbanite_t *p_fsm_urbanite = (fsm_urbanite_t *)p_this;
     fsm_button_reset_duration(p_fsm_urbanite->p_fsm_button);
-    //✅ 2. Stop the ultrasound sensor by calling fsm_ultrasound_stop() with the right parameters. With this the ultrasound sensor will stop measuring the distance if it was measuring.
+
+    //✅ 2. Stop the ultrasound sensor
     fsm_ultrasound_stop(p_fsm_urbanite->p_fsm_ultrasound_rear);
-    //✅ 3. Turn the display system off by calling fsm_display_set_status() with the right parameter. With this the display system will stop showing the distance if it was showing it
+
+    //✅ 3. Turn the display system off
     fsm_display_set_status(p_fsm_urbanite->p_fsm_display_rear, false);
-    //✅ 4. If the system is paused, remove the pause status to avoid the system to turn ON again with the display paused.
+
+    //✅ 4. Si estaba en pausa, cancelar pausa
     if (p_fsm_urbanite->is_paused)
     {
-        fsm_display_set_status(p_fsm_urbanite->p_fsm_display_rear, true);
         p_fsm_urbanite->is_paused = false;
     }
-    //✅ 5. Print a message to help yourself to debug and log the status of the system. You could do something like:
+
+    //✅ 5. Mensaje de depuración
     printf("[URBANITE][%ld] Urbanite system OFF\n", port_system_get_millis());
 }
+
 
 static void do_pause_display(fsm_t* p_this)
 {
