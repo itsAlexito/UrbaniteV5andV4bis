@@ -163,6 +163,67 @@ Se desarrolla una FSM principal que coordina todos los subsistemas anteriores.
 
 ---
 
+## Versión 4bis - Detección de movimiento por cambios bruscos de distancia
+
+### Descripción general
+
+Como mejora complementaria a la integración final del sistema Urbanite, se ha desarrollado una lógica de **detección de objetos en movimiento** basada en la observación de variaciones repentinas en la distancia medida por el sensor ultrasónico. Esta mejora, denominada **V4bis**, tiene como objetivo alertar al usuario ante la posible aparición de personas u objetos que se desplacen rápidamente en la zona de detección.
+
+El sistema compara la distancia actual (filtrada por mediana) con la última distancia válida registrada. Si la diferencia supera un umbral predefinido, se genera una **alerta por consola** utilizando `printf()` para informar de un posible objeto en movimiento.
+
+### Funcionamiento
+
+- Se amplía la estructura `fsm_ultrasound_t` con el campo `last_distance_cm`.
+- Tras cada actualización válida de `distance_cm` (medida por mediana), se calcula la diferencia con la anterior.
+- Si esa diferencia supera los **20 cm**, se lanza una alerta con `printf()`.
+- Para evitar falsos positivos, solo se consideran distancias en el rango **[1 cm, 400 cm]** como válidas para comparación.
+
+> Para asegurar un comportamiento robusto, el valor `last_distance_cm` se reinicia tanto en la función `fsm_ultrasound_init()` (cuando se crea la FSM) como en `fsm_ultrasound_start()` (cuando se activa el sensor). Esto evita falsos positivos al arrancar el sistema o al volver del estado OFF/PAUSA, ya que impide comparar medidas válidas contra residuos anteriores.
+
+
+Ejemplo de salida por consola:
+```c
+printf("[ALERTA] Objeto en movimiento detectado: Δdistancia = %ld cm\n", (long)diff);
+```
+
+### Parámetros definidos
+
+- **Umbral de activación**: 20 cm
+- **Rango válido de medida**: entre 1cm y 400 cm
+- **Comparación**: entre `distance_cm` y `last_distance_cm`
+- **Salida**: mensaje informativo en `stdout` mediante `printf()`
+
+### Estructura modular
+
+- **COMMON**:
+  - Ampliación de la estructura `fsm_ultrasound_t` con el campo `last_distance_cm`.
+  - Comparación e impresión añadidas al final del cálculo de la mediana en `do_set_distance()`.
+  - Filtro de valores extremos (fuera de [2–400] cm) para descartar eco falso o ruido.
+
+### Diagrama de la lógica V4bis
+
+![Detección de movimiento V4bis](docs/assets/imgs/v4bis_detection.png)
+
+> El sistema compara distancias sucesivas. Si el cambio es mayor a un umbral definido, se detecta un objeto en movimiento y se lanza una alerta por consola.
+
+
+### Bloques de código relevante
+```c
+// En do_set_distance(), tras calcular la mediana
+if (p_fsm->distance_cm >= 1 && p_fsm->distance_cm <= 400)
+{
+    if (p_fsm->last_distance_cm >= 0)
+    {
+        int32_t diff = abs((int32_t)p_fsm->distance_cm - (int32_t)p_fsm->last_distance_cm);
+        if (diff > 20)
+        {
+            printf("[ALERTA] Objeto en movimiento detectado: Δdistancia = %ld cm\n", (long)diff);
+        }
+    }
+    p_fsm->last_distance_cm = p_fsm->distance_cm;
+}
+```
+---
 ## Version 5.1 - Parpadeo del LED RGB
 
 ### Descripción general
@@ -214,6 +275,33 @@ Se mantiene la arquitectura modular basada en FSM, incorporando la lógica de pa
 | 26 – 50                 | Amarillo                   | 3.3 Hz (300 ms toggle)   |
 | > 50                    | Verde / Turquesa / Azul    | Sin parpadeo             |
 
+
+### Bloques de código relevante
+```c
+// En el archivo fsm_display.c
+static bool check_blink(fsm_t *p_this)
+{
+    fsm_display_t *p = (fsm_display_t *)p_this;
+    return (p->toggle_period_ms > 0 && port_system_get_millis() >= p->next_toggle_time);
+}
+
+static void do_blink_toggle(fsm_t *p_this)
+{
+    fsm_display_t *p = (fsm_display_t *)p_this;
+    port_display_toggle_rgb(p->display_id);
+    p->next_toggle_time = port_system_get_millis() + p->toggle_period_ms;
+}
+
+```
+```c
+    //3. Set blink frequency based on distance
+    if (distance_cm <= WARNING_MIN_CM)
+        p_fsm->toggle_period_ms = 100;
+    else if (distance_cm <= NO_PROBLEM_MIN_CM)
+        p_fsm->toggle_period_ms = 300;
+    else
+        p_fsm->toggle_period_ms = 0;
+```
 ## Version 5.2 - Activación sonora mediante buzzer pasivo
 
 

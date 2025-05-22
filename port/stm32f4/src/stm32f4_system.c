@@ -350,6 +350,10 @@ void stm32f4_system_gpio_toggle(GPIO_TypeDef *p_port, uint8_t pin)
 // POWER RELATED FUNCTIONS
 // ------------------------------------------------------
 
+/**
+ * @brief Enter Stop mode
+ * 
+ */
 void port_system_power_stop()
 {
  MODIFY_REG(PWR->CR, (PWR_CR_PDDS | PWR_CR_LPDS), PWR_CR_LPDS);   // Select the regulator state in Stop mode: Set PDDS and LPDS bits according to PWR_Regulator value

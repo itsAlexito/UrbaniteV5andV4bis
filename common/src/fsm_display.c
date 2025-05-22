@@ -131,18 +131,6 @@ static bool check_blink(fsm_t *p_this)
     return (p->toggle_period_ms > 0 && port_system_get_millis() >= p->next_toggle_time);
 }
 
-/**
- * @brief toggle the RGB LED between ON and OFF
- * 
- * @param p_this 
- */
-static void do_blink_toggle(fsm_t *p_this)
-{
-    fsm_display_t *p = (fsm_display_t *)p_this;
-    port_display_toggle_rgb(p->display_id);
-    p->next_toggle_time = port_system_get_millis() + p->toggle_period_ms;
-}
-
 
 /* State machine output or action functions */
 
@@ -189,6 +177,17 @@ static void do_set_off(fsm_t *p_this)
     port_display_set_rgb(p_fsm_display->display_id, COLOR_OFF);
     //2. Reset the flag idle to indicate that the display system is not idle
     p_fsm_display->idle = false;
+}
+/**
+ * @brief toggle the RGB LED between ON and OFF
+ * 
+ * @param p_this 
+ */
+static void do_blink_toggle(fsm_t *p_this)
+{
+    fsm_display_t *p = (fsm_display_t *)p_this;
+    port_display_toggle_rgb(p->display_id);
+    p->next_toggle_time = port_system_get_millis() + p->toggle_period_ms;
 }
 
 /**
@@ -240,19 +239,6 @@ fsm_display_t *fsm_display_new(uint32_t display_id)
     fsm_display_init(p_fsm_display, display_id); /* Initialize the FSM */
     return p_fsm_display;
 }
-
-/**
- * @brief Iniatialize the FSM display
- * This function initializes the default values of the FSM struct and calls to the port to initialize the associated HW given the ID.
- * The FSM stores the display level of the display system. The user should set it using the function fsm_display_set_distance().
- * 
- * @warning This display system is agnostic to the ultrasound sensor or any other sensor. It only shows the status of the display system set by the user. It does not matter if the display is for a parking sensor, a door sensor, or any other sensor. The display system only shows a status according to a distance set by the user.
- * The FSM contains information of the RGB LED ID. This ID is a unique identifier that is managed by the user in the port.
- *  That is where the user provides identifiers and HW information for all the RGB LEDs on his system. The FSM does not have to know anything of the underlying HW.
- * @param p_fsm_display 
- * @param display_id 
- */
-
 
 
 void fsm_display_fire(fsm_display_t *p_fsm)

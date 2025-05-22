@@ -45,7 +45,8 @@ typedef struct fsm_display_t fsm_display_t; /*!< Variable */
 /* Function prototypes and explanation -------------------------------------------------*/
 
 /**
- * @brief Create
+ * @brief Create a FSM display
+ * this function creates the FSM display and initializes it.
  * 
  * @param display_id 
  * @return fsm_display_t* 

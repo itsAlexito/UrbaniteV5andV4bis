@@ -10,6 +10,7 @@
 /* Standard C includes */
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "port_ultrasound.h"
 #include "port_system.h"
@@ -36,6 +37,8 @@ struct fsm_ultrasound_t
     uint32_t ultrasound_id; /*!< ID of the ultrasound sensor, must be unique */
     uint32_t distance_arr[FSM_ULTRASOUND_NUM_MEASUREMENTS]; /*!< Array to store the distances measured by the ultrasound sensor */
     uint32_t distance_idx; /*!< Index of the distance array */
+    int32_t last_distance_cm; /*!< Última distancia para detectar cambios bruscos (V4bis) */
+
 };
 /* Typedefs --------------------------------------------------------------------*/
 
@@ -166,10 +169,12 @@ static void do_stop_trigger(fsm_t *p_this)
     port_ultrasound_set_trigger_end(((fsm_ultrasound_t *)p_this)->ultrasound_id, false);
 }
 
+
 /**
  * @brief Set the distance measured by the ultrasound sensor.
  * This function is called when the ultrasound sensor has received the echo signal. It calculates the distance in cm and stores it in the array of distances.
- * When the array is full, it computes the median of the array and resets the index of the array.
+ * When the array is full, it computes the median of the array and resetea el índice.
+ * Incluye detección de cambios bruscos (V4bis).
  * 
  * @param p_this 
  */
@@ -206,18 +211,35 @@ static void do_set_distance(fsm_t *p_this)
             p_fsm->distance_cm = p_fsm->distance_arr[FSM_ULTRASOUND_NUM_MEASUREMENTS / 2];
         }
 
+        // ✅ Filtro: ignorar medidas absurdas (ruido puntual o eco falso)
+        if (p_fsm->distance_cm >= 1 && p_fsm->distance_cm <= 400)
+        {
+            // V4bis - detectar cambio brusco de distancia entre medidas medianas válidas
+            if (p_fsm->last_distance_cm >= 0)
+            {
+                int32_t diff = abs((int32_t)p_fsm->distance_cm - (int32_t)p_fsm->last_distance_cm);
+                if (diff > 20)
+                {
+                    printf("[ALERTA] Objeto en movimiento detectado: Δdistancia = %ld cm\n", (long)diff);
+                }
+            }
+            // Actualizar solo si es válida
+            p_fsm->last_distance_cm = p_fsm->distance_cm;
+        }
+
         p_fsm->new_measurement = true;
     }
 
-    // 8. Increment index
+    // 6. Increment index
     p_fsm->distance_idx = (p_fsm->distance_idx + 1) % FSM_ULTRASOUND_NUM_MEASUREMENTS;
 
-    // 9. Stop the echo timer
+    // 7. Stop the echo timer
     port_ultrasound_stop_echo_timer(p_fsm->ultrasound_id);
 
-    // 10. Reset the echo ticks
+    // 8. Reset the echo ticks
     port_ultrasound_reset_echo_ticks(p_fsm->ultrasound_id);
 }
+
 
 /**
  * @brief 
@@ -281,6 +303,10 @@ void fsm_ultrasound_init(fsm_ultrasound_t *p_fsm_ultrasound, uint32_t ultrasound
 
         p_fsm_ultrasound->status = false;
         p_fsm_ultrasound->new_measurement = false;
+        
+        //V4.bis
+        p_fsm_ultrasound->last_distance_cm = -1;
+
 
 
     // 5. Inicializar el HW del sensor
@@ -346,6 +372,9 @@ void fsm_ultrasound_start(fsm_ultrasound_t *p_fsm)
     p_fsm->distance_idx = 0;
     //3. Reset the field distance_cm to 0.
     p_fsm->distance_cm = 0;
+
+    //4bis Set the field last_distance_cm to -1.
+    p_fsm->last_distance_cm = -1;
     //4. Call function port_ultrasound_reset_echo_ticks() with the right parameters.
     port_ultrasound_reset_echo_ticks(p_fsm->ultrasound_id);
     //5. 5. Call function port_ultrasound_set_trigger_ready() with the right parameters to indicate that the ultrasound sensor is ready to start a new measurement.
